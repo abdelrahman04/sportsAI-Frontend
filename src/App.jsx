@@ -56,6 +56,9 @@ const App = () => {
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedAttributes, setSelectedAttributes] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState("");
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleRoleChange = (event) => {
     setSelectedRole(event.target.value);
@@ -70,20 +73,56 @@ const App = () => {
     );
   };
 
-  const handleSubmit = () => {
-    console.log("Selected Role:", selectedRole);
-    console.log("Selected Attributes (Displayed Names):", selectedAttributes);
-    console.log("Selected Attributes (Dataset Names):", selectedAttributes.map(attr => attributeMap[attr] || attr));
-    console.log("Selected Team:", selectedTeam);
+  const handleSubmit = async () => {
+    if (!selectedRole || !selectedTeam) {
+      setError("Please select a role, team, and at least one attribute");
+      return;
+    }
 
+    setLoading(true);
+    setError(null);
+    console.log(JSON.stringify({
+      position: selectedRole,
+      team: selectedTeam,
+      specific_role_cols: selectedAttributes.map(attr => attributeMap[attr] || attr)
+    }));
+    try {
+      const response = await fetch("http://localhost:8000/analyze-players", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          position: selectedRole,
+          team: selectedTeam,
+          specific_role_cols: selectedAttributes.map(attr => attributeMap[attr] || attr)
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setAnalysisResult(data);
+    } catch (err) {
+      setError("Failed to fetch analysis results. Please try again.");
+      console.error("Error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 p-6">
-      <div className="p-6 bg-white rounded-2xl shadow-lg text-center w-96">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
+      <div className="p-6 bg-white rounded-2xl shadow-lg text-center w-96 mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Select Role & Attributes</h1>
 
-        <select className="w-full p-2 border rounded-md mb-4" onChange={handleRoleChange} value={selectedRole}>
+        <select 
+          className="w-full p-2 border rounded-md mb-4" 
+          onChange={handleRoleChange} 
+          value={selectedRole}
+        >
           <option value="">Select Role</option>
           {Object.keys(roles).map((role) => (
             <option key={role} value={role}>{role}</option>
@@ -107,17 +146,42 @@ const App = () => {
           </div>
         )}
 
-          <select className="w-full p-2 border rounded-md mb-4" onChange={(e) => setSelectedTeam(e.target.value)} value={selectedTeam}>
+        <select 
+          className="w-full p-2 border rounded-md mb-4" 
+          onChange={(e) => setSelectedTeam(e.target.value)} 
+          value={selectedTeam}
+        >
           <option value="">Select Team</option>
           {teams.map((team) => (
             <option key={team} value={team}>{team}</option>
           ))}
         </select>
 
-        <button className="w-full p-2 bg-blue-500 text-white rounded-md" onClick={handleSubmit}>
-          Submit
+        {error && (
+          <div className="text-red-500 mb-4">
+            {error}
+          </div>
+        )}
+
+        <button 
+          className="w-full p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400" 
+          onClick={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? "Analyzing..." : "Submit"}
         </button>
       </div>
+
+      {analysisResult && (
+        <div className="p-6 bg-white rounded-2xl shadow-lg w-full max-w-4xl">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Analysis Results</h2>
+          <div className="overflow-x-auto">
+            <pre className="whitespace-pre-wrap">
+              {JSON.stringify(analysisResult, null, 2)}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
