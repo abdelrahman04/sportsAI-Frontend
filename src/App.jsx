@@ -1,11 +1,35 @@
 import React, { useState } from "react";
 
-const teams = [
-  "Arsenal", "Aston Villa", "Bournemouth", "Brentford", "Brighton", "Burnley", "Chelsea",
-  "Crystal Palace", "Everton", "Fulham", "Liverpool", "Luton Town", "Manchester City",
-  "Manchester United", "Newcastle United", "Nottingham Forest", "Sheffield United", "Tottenham Hotspur",
-  "West Ham United", "Wolverhampton Wanderers"
-];
+const teamsByLeague = {
+  "Premier League": [
+    "Arsenal", "Aston Villa", "Bournemouth", "Brentford", "Brighton", "Burnley",
+    "Chelsea", "Crystal Palace", "Everton", "Fulham", "Liverpool", "Luton Town",
+    "Manchester City", "Manchester Utd", "Newcastle Utd", "Nott'ham Forest",
+    "Sheffield Utd", "Tottenham", "West Ham", "Wolves"
+  ],
+  "La Liga": [
+    "Alavés", "Almería", "Athletic Club", "Atlético Madrid", "Barcelona", "Betis",
+    "Cádiz", "Celta Vigo", "Getafe", "Girona", "Granada", "Las Palmas",
+    "Mallorca", "Osasuna", "Rayo Vallecano", "Real Madrid", "Real Sociedad",
+    "Sevilla", "Valencia", "Villarreal"
+  ],
+  "Bundesliga": [
+    "Augsburg", "Bayern Munich", "Bochum", "Darmstadt 98", "Dortmund",
+    "Eint Frankfurt", "Freiburg", "Gladbach", "Heidenheim", "Hoffenheim",
+    "Köln", "Leverkusen", "Mainz 05", "RB Leipzig", "Stuttgart", "Union Berlin",
+    "Werder Bremen", "Wolfsburg"
+  ],
+  "Serie A": [
+    "Atalanta", "Bologna", "Cagliari", "Empoli", "Fiorentina", "Frosinone",
+    "Genoa", "Hellas Verona", "Inter", "Juventus", "Lazio", "Lecce", "Milan",
+    "Monza", "Napoli", "Roma", "Salernitana", "Sassuolo", "Torino", "Udinese"
+  ],
+  "Ligue 1": [
+    "Brest", "Clermont Foot", "Le Havre", "Lens", "Lille", "Lorient", "Lyon",
+    "Marseille", "Metz", "Monaco", "Montpellier", "Nantes", "Nice", "Paris S-G",
+    "Reims", "Rennes", "Strasbourg", "Toulouse"
+  ]
+};
 
 const attributeMap = {
   "Goals": "Gls",
@@ -47,7 +71,7 @@ const roles = {
   Winger: ["Goals", "Shots on Target", "Shots On Target Per 90", "Goals/Shots on target", "Penalty Kicks Made", "xG (Expected Goals)", "Shots from Freekick", "Assists", "xA (Expected Assists)", "Key Passes", "Crosses into Penalty Area"],
   "Attacking Mid": ["Goals", "Shots on Target", "Shots On Target Per 90", "Goals/Shots on target", "Penalty Kicks Made", "xG (Expected Goals)", "Shots from Freekick", "Assists", "xA (Expected Assists)", "Key Passes", "Crosses into Penalty Area", "Progressive Passes", "Completed Passes Total", "Passes into Penalty Area"],
   "Centre Mid": ["Crosses into Penalty Area", "Progressive Passes", "Completed Passes Total", "Assists", "xA (Expected Assists)", "Successful Take-On%", "Carries", "Tackles Won", "% of Dribblers Tackled", "Blocks", "Passes Block", "Interceptions", "Clearances"],
-  Fullbacks: ["Tackles Won", "% of Dribblers Tackled", "Blocks", "Passes Block", "Interceptions", "Clearances", "Successful Take-On%", "Crosses into Penalty Area", "Progressive Passes", "Completed Passes Total", "Assists", "xA (Expected Assists)", "Carries", "Passes into Penalty Area", "Key Passes"],
+  "Fullback": ["Tackles Won", "% of Dribblers Tackled", "Blocks", "Passes Block", "Interceptions", "Clearances", "Successful Take-On%", "Crosses into Penalty Area", "Progressive Passes", "Completed Passes Total", "Assists", "xA (Expected Assists)", "Carries", "Passes into Penalty Area", "Key Passes"],
   "Centre Defense": ["Tackles Won", "% of Dribblers Tackled", "Blocks", "Passes Block", "Interceptions", "Clearances", "Carries", "Successful Take-On%", "Ball Recoveries", "% of Aerial Duels Won"],
   Goalkeeping: ["Goals Against /90", "Save Percentage", "Clean Sheet Percentage", "Penalty Kicks Saved %", "Passes Completed (Launched)", "Crosses Stopped", "% of Passes that were Launched", "Assists", "xA (Expected Assists)"]
 };
@@ -55,6 +79,7 @@ const roles = {
 const App = () => {
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedAttributes, setSelectedAttributes] = useState([]);
+  const [selectedLeague, setSelectedLeague] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -63,6 +88,11 @@ const App = () => {
   const handleRoleChange = (event) => {
     setSelectedRole(event.target.value);
     setSelectedAttributes([]);
+  };
+
+  const handleLeagueChange = (event) => {
+    setSelectedLeague(event.target.value);
+    setSelectedTeam("");
   };
 
   const handleCheckboxChange = (attribute) => {
@@ -74,8 +104,8 @@ const App = () => {
   };
 
   const handleSubmit = async () => {
-    if (!selectedRole || !selectedTeam) {
-      setError("Please select a role, team, and at least one attribute");
+    if (!selectedRole || !selectedTeam || !selectedLeague) {
+      setError("Please select a role, league, team, and at least one attribute");
       return;
     }
 
@@ -84,6 +114,7 @@ const App = () => {
     console.log(JSON.stringify({
       position: selectedRole,
       team: selectedTeam,
+      league: selectedLeague,
       specific_role_cols: selectedAttributes.map(attr => attributeMap[attr] || attr)
     }));
     try {
@@ -95,6 +126,7 @@ const App = () => {
         body: JSON.stringify({
           position: selectedRole,
           team: selectedTeam,
+          league: selectedLeague,
           specific_role_cols: selectedAttributes.map(attr => attributeMap[attr] || attr)
         }),
       });
@@ -148,14 +180,27 @@ const App = () => {
 
         <select 
           className="w-full p-2 border rounded-md mb-4" 
-          onChange={(e) => setSelectedTeam(e.target.value)} 
-          value={selectedTeam}
+          onChange={handleLeagueChange} 
+          value={selectedLeague}
         >
-          <option value="">Select Team</option>
-          {teams.map((team) => (
-            <option key={team} value={team}>{team}</option>
+          <option value="">Select League</option>
+          {Object.keys(teamsByLeague).map((league) => (
+            <option key={league} value={league}>{league}</option>
           ))}
         </select>
+
+        {selectedLeague && (
+          <select 
+            className="w-full p-2 border rounded-md mb-4" 
+            onChange={(e) => setSelectedTeam(e.target.value)} 
+            value={selectedTeam}
+          >
+            <option value="">Select Team</option>
+            {teamsByLeague[selectedLeague].map((team) => (
+              <option key={team} value={team}>{team}</option>
+            ))}
+          </select>
+        )}
 
         {error && (
           <div className="text-red-500 mb-4">
