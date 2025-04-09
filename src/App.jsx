@@ -76,6 +76,7 @@ const roles = {
   Goalkeeping: ["Goals Against /90", "Save Percentage", "Clean Sheet Percentage", "Penalty Kicks Saved %", "Passes Completed (Launched)", "Crosses Stopped", "% of Passes that were Launched", "Assists", "xA (Expected Assists)"]
 };
 
+
 const App = () => {
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedAttributes, setSelectedAttributes] = useState([]);
@@ -105,18 +106,13 @@ const App = () => {
 
   const handleSubmit = async () => {
     if (!selectedRole || !selectedTeam || !selectedLeague) {
-      setError("Please select a role, league, team, and at least one attribute");
+      setError("Please select a role, league, team");
       return;
     }
 
     setLoading(true);
     setError(null);
-    console.log(JSON.stringify({
-      position: selectedRole,
-      team: selectedTeam,
-      league: selectedLeague,
-      specific_role_cols: selectedAttributes.map(attr => attributeMap[attr] || attr)
-    }));
+    
     try {
       const response = await fetch("http://localhost:8000/analyze-players", {
         method: "POST",
@@ -146,87 +142,276 @@ const App = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
-      <div className="p-6 bg-white rounded-2xl shadow-lg text-center w-96 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Select Role & Attributes</h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+            TalentVision AI
+          </h1>
+          <p className="text-gray-600">
+            Advanced analytics for player performance evaluation
+          </p>
+        </header>
 
-        <select 
-          className="w-full p-2 border rounded-md mb-4" 
-          onChange={handleRoleChange} 
-          value={selectedRole}
-        >
-          <option value="">Select Role</option>
-          {Object.keys(roles).map((role) => (
-            <option key={role} value={role}>{role}</option>
-          ))}
-        </select>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Selection Panel */}
+          <div className="bg-white rounded-xl shadow-lg p-6 lg:col-span-1">
+            <h2 className="text-xl font-bold text-gray-800 mb-6 pb-2 border-b border-gray-200">
+              Player Selection Criteria
+            </h2>
 
-        {selectedRole && (
-          <div className="text-left mb-4">
-            <h2 className="font-semibold">Attributes:</h2>
-            {roles[selectedRole].map((attribute) => (
-              <label key={attribute} className="block">
-                <input
-                  type="checkbox"
-                  className="mr-2"
-                  checked={selectedAttributes.includes(attribute)}
-                  onChange={() => handleCheckboxChange(attribute)}
-                />
-                {attribute}
-              </label>
-            ))}
+            <div className="space-y-6">
+              {/* Role Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Player Role
+                </label>
+                <select
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  onChange={handleRoleChange}
+                  value={selectedRole}
+                >
+                  <option value="">Select a role</option>
+                  {Object.keys(roles).map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Attributes */}
+              {selectedRole && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">
+                    Select Attributes
+                  </h3>
+                  <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto p-1">
+                    {roles[selectedRole].map((attribute) => (
+                      <label
+                        key={attribute}
+                        className={`flex items-center p-2 rounded-md cursor-pointer ${
+                          selectedAttributes.includes(attribute)
+                            ? "bg-blue-50"
+                            : "hover:bg-gray-100"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                          checked={selectedAttributes.includes(attribute)}
+                          onChange={() => handleCheckboxChange(attribute)}
+                        />
+                        <span className="ml-3 text-sm text-gray-700">
+                          {attribute}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* League & Team Selection */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    League
+                  </label>
+                  <select
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    onChange={handleLeagueChange}
+                    value={selectedLeague}
+                  >
+                    <option value="">Select a league</option>
+                    {Object.keys(teamsByLeague).map((league) => (
+                      <option key={league} value={league}>
+                        {league}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedLeague && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Team
+                    </label>
+                    <select
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                      onChange={(e) => setSelectedTeam(e.target.value)}
+                      value={selectedTeam}
+                    >
+                      <option value="">Select a team</option>
+                      {teamsByLeague[selectedLeague].map((team) => (
+                        <option key={team} value={team}>
+                          {team}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <button
+                className={`w-full py-3 px-4 rounded-lg font-medium text-white transition ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 shadow-md"
+                }`}
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Analyzing...
+                  </span>
+                ) : (
+                  "Generate Scouting Report"
+                )}
+              </button>
+
+              {error && (
+                <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+            </div>
           </div>
-        )}
 
-        <select 
-          className="w-full p-2 border rounded-md mb-4" 
-          onChange={handleLeagueChange} 
-          value={selectedLeague}
-        >
-          <option value="">Select League</option>
-          {Object.keys(teamsByLeague).map((league) => (
-            <option key={league} value={league}>{league}</option>
-          ))}
-        </select>
+          {/* Results Panel */}
+          <div className="bg-white rounded-xl shadow-lg p-6 lg:col-span-2">
+            <h2 className="text-xl font-bold text-gray-800 mb-6 pb-2 border-b border-gray-200">
+              Scouting Report
+            </h2>
 
-        {selectedLeague && (
-          <select 
-            className="w-full p-2 border rounded-md mb-4" 
-            onChange={(e) => setSelectedTeam(e.target.value)} 
-            value={selectedTeam}
-          >
-            <option value="">Select Team</option>
-            {teamsByLeague[selectedLeague].map((team) => (
-              <option key={team} value={team}>{team}</option>
-            ))}
-          </select>
-        )}
+            {analysisResult ? (
+              <div className="space-y-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-medium text-gray-800 mb-2">
+                    Selected Criteria:
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="bg-blue-100 text-blue-800 text-xs px-2.5 py-0.5 rounded">
+                      {analysisResult.position}
+                    </span>
+                    <span className="bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded">
+                      {selectedLeague}
+                    </span>
+                    <span className="bg-purple-100 text-purple-800 text-xs px-2.5 py-0.5 rounded">
+                      {analysisResult.team}
+                    </span>
+                    {selectedAttributes.map((attr) => (
+                      <span
+                        key={attr}
+                        className="bg-yellow-100 text-yellow-800 text-xs px-2.5 py-0.5 rounded"
+                      >
+                        {attr}
+                      </span>
+                    ))}
+                  </div>
+                </div>
 
-        {error && (
-          <div className="text-red-500 mb-4">
-            {error}
-          </div>
-        )}
+                <div>
+                  <h3 className="font-medium text-gray-800 mb-2">
+                    Team Players:
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {analysisResult.team_players?.map((player) => (
+                      <span
+                        key={player}
+                        className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm"
+                      >
+                        {player}
+                      </span>
+                    ))}
+                  </div>
+                </div>
 
-        <button 
-          className="w-full p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400" 
-          onClick={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? "Analyzing..." : "Submit"}
-        </button>
-      </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-800 mb-4">
+                    Similar Players Analysis
+                  </h3>
+                  <div className="space-y-4">
+                  {analysisResult.similar_players?.map((player, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-bold text-gray-800">
+                              {player.player}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {player.position} • {player.team}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Similarity Distance: {player.distance.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
 
-      {analysisResult && (
-        <div className="p-6 bg-white rounded-2xl shadow-lg w-full max-w-4xl">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Analysis Results</h2>
-          <div className="overflow-x-auto">
-            <pre className="whitespace-pre-wrap">
-              {JSON.stringify(analysisResult, null, 2)}
-            </pre>
+                        <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {Object.entries(player.stats || {}).map(([statName, statValue]) => (
+                            <div key={statName} className="text-sm">
+                              <span className="text-gray-500 capitalize">{statName.replace(/_/g, ' ')}:</span>
+                              <span className="ml-2 font-medium text-gray-800">
+                                {typeof statValue === 'number' ? statValue.toFixed(2) : statValue || "N/A"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <svg
+                  className="w-16 h-16 text-gray-400 mb-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-1">
+                  No report generated
+                </h3>
+                <p className="text-gray-500 max-w-md">
+                  Select player role, attributes, league and team to generate a
+                  scouting report.
+                </p>
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
