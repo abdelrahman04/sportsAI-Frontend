@@ -117,10 +117,10 @@ const playerColors = [
 ];
 
 const App = () => {
-  const [selectedRole, setSelectedRole] = useState("Winger");
+  const [selectedRole, setSelectedRole] = useState(null);
   const [selectedAttributes, setSelectedAttributes] = useState([]);
-  const [selectedLeague, setSelectedLeague] = useState("Premier League");
-  const [selectedTeam, setSelectedTeam] = useState("Liverpool");
+  const [selectedLeague, setSelectedLeague] = useState(null);
+  const [selectedTeam, setSelectedTeam] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
