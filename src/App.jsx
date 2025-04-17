@@ -117,144 +117,163 @@ const playerColors = [
 ];
 
 const App = () => {
-  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedRole, setSelectedRole] = useState("Winger");
   const [selectedAttributes, setSelectedAttributes] = useState([]);
-  const [selectedLeague, setSelectedLeague] = useState("");
-  const [selectedTeam, setSelectedTeam] = useState("");
+  const [selectedLeague, setSelectedLeague] = useState("Premier League");
+  const [selectedTeam, setSelectedTeam] = useState("Liverpool");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
 
   // Function to standardize the data for radar charts
-  // Modify the standardizeData function to include average profile
-const standardizeData = (data, averageProfile) => {
-  if (!data || !Array.isArray(data)) return [];
-  
-  // Get all attributes to analyze
-  const allAttributes = {};
-  data.forEach(player => {
-    if (player.stats) {
-      Object.keys(player.stats).forEach(key => {
-        if (typeof player.stats[key] === "number") {
-          allAttributes[key] = true;
+  const standardizeData = (data, averageProfile) => {
+    if (!data || !Array.isArray(data)) {
+      return { players: [], average: null };
+    }
+    
+    // Get all attributes from both players and average profile
+    const allAttributes = new Set();
+    
+    // Collect attributes from players
+    data.forEach(player => {
+      if (player.stats) {
+        Object.keys(player.stats).forEach(key => {
+          if (typeof player.stats[key] === "number") {
+            allAttributes.add(key);
+          }
+        });
+      }
+    });
+    
+    // Collect attributes from average profile
+    if (averageProfile) {
+      Object.keys(averageProfile).forEach(key => {
+        if (typeof averageProfile[key] === "number") {
+          allAttributes.add(key);
         }
       });
     }
-  });
-  
-  // Include average profile attributes
-  if (averageProfile) {
-    Object.keys(averageProfile).forEach(key => {
-      if (typeof averageProfile[key] === "number") {
-        allAttributes[key] = true;
+    
+    const attributesList = Array.from(allAttributes);
+    
+    // Calculate min and max for each attribute individually
+    const ranges = {};
+    attributesList.forEach(attr => {
+      const values = [];
+      
+      // Collect values from players
+      data.forEach(player => {
+        if (player.stats && player.stats[attr] !== undefined) {
+          values.push(player.stats[attr]);
+        }
+      });
+      
+      // Add average profile value if it exists
+      if (averageProfile && averageProfile[attr] !== undefined) {
+        values.push(averageProfile[attr]);
+      }
+      
+      if (values.length > 0) {
+        ranges[attr] = {
+          min: Math.min(...values),
+          max: Math.max(...values)
+        };
       }
     });
-  }
-  
-  const attributesList = Object.keys(allAttributes);
-  
-  // For each attribute, find the min and max values - include average profile values
-  const ranges = {};
-  attributesList.forEach(attr => {
-    const playerValues = data.map(player => 
-      player.stats && player.stats[attr] !== undefined ? player.stats[attr] : null
-    ).filter(v => v !== null);
     
-    // Add average profile value to the range calculation if it exists
-    if (averageProfile && averageProfile[attr] !== undefined) {
-      playerValues.push(averageProfile[attr]);
-    }
-    
-    ranges[attr] = {
-      min: Math.min(...playerValues),
-      max: Math.max(...playerValues)
-    };
-  });
-  
-  // Standardize players data
-  const standardizedPlayers = data.map(player => {
-    const standardizedStats = {};
-    if (player.stats) {
-      Object.keys(player.stats).forEach(key => {
-        if (typeof player.stats[key] === "number" && ranges[key]) {
-          const range = ranges[key];
-          if (range.max === range.min) {
-            standardizedStats[key] = 0.5; // If all values are the same, assign middle value
+    // Process players data
+    const processedPlayers = data.map(player => {
+      const processedStats = {};
+      
+      attributesList.forEach(attr => {
+        const range = ranges[attr];
+        if (range) {
+          const value = player.stats?.[attr];
+          if (value !== undefined) {
+            if (range.max === range.min) {
+              processedStats[attr] = 0.5;
+            } else {
+              processedStats[attr] = (value - 0) / (range.max - 0);
+            }
           } else {
-            standardizedStats[key] = (player.stats[key] - range.min) / (range.max - range.min);
+            // If player is missing an attribute, set it to 0
+            processedStats[attr] = 0;
+          }
+        }
+      });
+      
+      return {
+        ...player,
+        standardizedStats: processedStats
+      };
+    });
+    
+    // Process the average profile
+    let processedAverage = null;
+    if (averageProfile) {
+      processedAverage = {};
+      attributesList.forEach(attr => {
+        const range = ranges[attr];
+        if (range) {
+          const value = averageProfile[attr];
+          if (value !== undefined) {
+            if (range.max === range.min) {
+              processedAverage[attr] = 0.5;
+            } else {
+              processedAverage[attr] = (value - range.min) / (range.max - range.min);
+            }
+          } else {
+            // If average profile is missing an attribute, set it to 0
+            processedAverage[attr] = 0;
           }
         }
       });
     }
     
     return {
-      ...player,
-      standardizedStats
+      players: processedPlayers,
+      average: processedAverage
     };
-  });
-  
-  // Also standardize the average profile using the same ranges
-  let standardizedAverage = null;
-  if (averageProfile) {
-    standardizedAverage = {};
-    Object.keys(averageProfile).forEach(key => {
-      if (typeof averageProfile[key] === "number" && ranges[key]) {
-        const range = ranges[key];
-        if (range.max === range.min) {
-          standardizedAverage[key] = 0.5;
-        } else {
-          standardizedAverage[key] = (averageProfile[key] - range.min) / (range.max - range.min);
+  };
+
+  const prepareRadarData = (player, standardizedAverage, index) => {
+    if (!player || !player.standardizedStats || !standardizedAverage) return null;
+
+    // Get common attributes between player and average profile
+    const commonAttributes = Object.keys(player.standardizedStats).filter(
+      attr => standardizedAverage[attr] !== undefined
+    );
+    
+    // Format the attribute labels for better display
+    const labels = commonAttributes.map(key => 
+      key.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim()
+    );
+    
+    // Create datasets for player and average
+    return {
+      labels,
+      datasets: [
+        {
+          label: `${player.player}`,
+          data: commonAttributes.map(attr => player.standardizedStats[attr]),
+          backgroundColor: playerColors[index % playerColors.length].bg,
+          borderColor: playerColors[index % playerColors.length].border,
+          borderWidth: 2,
+          pointBackgroundColor: playerColors[index % playerColors.length].border,
+        },
+        {
+          label: "Team Average",
+          data: commonAttributes.map(attr => standardizedAverage[attr]),
+          backgroundColor: "rgba(128, 128, 128, 0.2)",
+          borderColor: "rgba(128, 128, 128, 1)",
+          borderWidth: 2,
+          pointBackgroundColor: "rgba(128, 128, 128, 1)",
+          pointStyle: 'circle',
         }
-      }
-    });
-  }
-  
-  return {
-    players: standardizedPlayers,
-    average: standardizedAverage
+      ],
+    };
   };
-};
-
-
-
-const prepareRadarData = (player, standardizedAverage, index) => {
-  if (!player || !player.standardizedStats || !standardizedAverage) return null;
-
-  // Get common attributes between player and average profile
-  const commonAttributes = Object.keys(player.standardizedStats).filter(
-    attr => standardizedAverage[attr] !== undefined
-  );
-  
-  // Format the attribute labels for better display
-  const labels = commonAttributes.map(key => 
-    key.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim()
-  );
-  
-  // Create datasets for player and average
-  return {
-    labels,
-    datasets: [
-      {
-        label: `${player.player}`,
-        data: commonAttributes.map(attr => player.standardizedStats[attr]),
-        backgroundColor: playerColors[index % playerColors.length].bg,
-        borderColor: playerColors[index % playerColors.length].border,
-        borderWidth: 2,
-        pointBackgroundColor: playerColors[index % playerColors.length].border,
-      },
-      {
-        label: "Team Average",
-        data: commonAttributes.map(attr => standardizedAverage[attr]),
-        backgroundColor: "rgba(128, 128, 128, 0.2)",
-        borderColor: "rgba(128, 128, 128, 1)",
-        borderWidth: 2,
-        pointBackgroundColor: "rgba(128, 128, 128, 1)",
-        pointStyle: 'circle',
-      }
-    ],
-  };
-};
 
   // Function to prepare data for attribute comparison bar charts
   const prepareAttributeBarData = (players, attribute) => {
@@ -363,6 +382,7 @@ const prepareRadarData = (player, standardizedAverage, index) => {
       // Process and set the analysis results
       // In the handleSubmit function
       if (data && data.similar_players && data.average_profile) {
+        console.log("hna2")
         // Limit to top 5 players
         data.similar_players = data.similar_players.slice(0, 5);
         
@@ -622,7 +642,7 @@ const prepareRadarData = (player, standardizedAverage, index) => {
                                   {player.position || analysisResult.position}
                                 </span>
                                 <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">
-                                  Match: {player.similarity ? (player.similarity * 100).toFixed(1) + '%' : 'N/A'}
+                                  Distance: {player.distance ? player.distance.toFixed(2) : 'N/A'}
                                 </span>
                               </div>
                             </div>
@@ -793,7 +813,7 @@ const prepareRadarData = (player, standardizedAverage, index) => {
                               </div>
                               <div className="mt-3 md:mt-0">
                                 <span className="inline-block bg-white text-gray-800 text-lg font-bold px-4 py-2 rounded-lg">
-                                  Match: {player.similarity ? (player.similarity * 100).toFixed(1) + '%' : 'N/A'}
+                                  Distance: {player.distance ? player.distance.toFixed(2) : 'N/A'}
                                 </span>
                               </div>
                             </div>
