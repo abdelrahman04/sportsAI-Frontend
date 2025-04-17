@@ -1,4 +1,35 @@
 import React, { useState } from "react";
+import {
+  Bar,
+  Radar,
+} from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  ArcElement,
+} from "chart.js";
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  ArcElement
+);
 
 const teamsByLeague = {
   "Premier League": [
@@ -76,6 +107,14 @@ const roles = {
   Goalkeeping: ["Goals Against /90", "Save Percentage", "Clean Sheet Percentage", "Penalty Kicks Saved %", "Passes Completed (Launched)", "Crosses Stopped", "% of Passes that were Launched", "Assists", "xA (Expected Assists)"]
 };
 
+// Player chart colors for consistency across visualizations
+const playerColors = [
+  { bg: "rgba(255, 99, 132, 0.2)", border: "rgba(255, 99, 132, 1)" },   // Red
+  { bg: "rgba(54, 162, 235, 0.2)", border: "rgba(54, 162, 235, 1)" },   // Blue
+  { bg: "rgba(255, 206, 86, 0.2)", border: "rgba(255, 206, 86, 1)" },   // Yellow
+  { bg: "rgba(75, 192, 192, 0.2)", border: "rgba(75, 192, 192, 1)" },   // Green
+  { bg: "rgba(153, 102, 255, 0.2)", border: "rgba(153, 102, 255, 1)" }, // Purple
+];
 
 const App = () => {
   const [selectedRole, setSelectedRole] = useState("");
@@ -85,6 +124,190 @@ const App = () => {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+
+  // Function to standardize the data for radar charts
+  // Modify the standardizeData function to include average profile
+const standardizeData = (data, averageProfile) => {
+  if (!data || !Array.isArray(data)) return [];
+  
+  // Get all attributes to analyze
+  const allAttributes = {};
+  data.forEach(player => {
+    if (player.stats) {
+      Object.keys(player.stats).forEach(key => {
+        if (typeof player.stats[key] === "number") {
+          allAttributes[key] = true;
+        }
+      });
+    }
+  });
+  
+  // Include average profile attributes
+  if (averageProfile) {
+    Object.keys(averageProfile).forEach(key => {
+      if (typeof averageProfile[key] === "number") {
+        allAttributes[key] = true;
+      }
+    });
+  }
+  
+  const attributesList = Object.keys(allAttributes);
+  
+  // For each attribute, find the min and max values - include average profile values
+  const ranges = {};
+  attributesList.forEach(attr => {
+    const playerValues = data.map(player => 
+      player.stats && player.stats[attr] !== undefined ? player.stats[attr] : null
+    ).filter(v => v !== null);
+    
+    // Add average profile value to the range calculation if it exists
+    if (averageProfile && averageProfile[attr] !== undefined) {
+      playerValues.push(averageProfile[attr]);
+    }
+    
+    ranges[attr] = {
+      min: Math.min(...playerValues),
+      max: Math.max(...playerValues)
+    };
+  });
+  
+  // Standardize players data
+  const standardizedPlayers = data.map(player => {
+    const standardizedStats = {};
+    if (player.stats) {
+      Object.keys(player.stats).forEach(key => {
+        if (typeof player.stats[key] === "number" && ranges[key]) {
+          const range = ranges[key];
+          if (range.max === range.min) {
+            standardizedStats[key] = 0.5; // If all values are the same, assign middle value
+          } else {
+            standardizedStats[key] = (player.stats[key] - range.min) / (range.max - range.min);
+          }
+        }
+      });
+    }
+    
+    return {
+      ...player,
+      standardizedStats
+    };
+  });
+  
+  // Also standardize the average profile using the same ranges
+  let standardizedAverage = null;
+  if (averageProfile) {
+    standardizedAverage = {};
+    Object.keys(averageProfile).forEach(key => {
+      if (typeof averageProfile[key] === "number" && ranges[key]) {
+        const range = ranges[key];
+        if (range.max === range.min) {
+          standardizedAverage[key] = 0.5;
+        } else {
+          standardizedAverage[key] = (averageProfile[key] - range.min) / (range.max - range.min);
+        }
+      }
+    });
+  }
+  
+  return {
+    players: standardizedPlayers,
+    average: standardizedAverage
+  };
+};
+
+
+
+const prepareRadarData = (player, standardizedAverage, index) => {
+  if (!player || !player.standardizedStats || !standardizedAverage) return null;
+
+  // Get common attributes between player and average profile
+  const commonAttributes = Object.keys(player.standardizedStats).filter(
+    attr => standardizedAverage[attr] !== undefined
+  );
+  
+  // Format the attribute labels for better display
+  const labels = commonAttributes.map(key => 
+    key.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim()
+  );
+  
+  // Create datasets for player and average
+  return {
+    labels,
+    datasets: [
+      {
+        label: `${player.player}`,
+        data: commonAttributes.map(attr => player.standardizedStats[attr]),
+        backgroundColor: playerColors[index % playerColors.length].bg,
+        borderColor: playerColors[index % playerColors.length].border,
+        borderWidth: 2,
+        pointBackgroundColor: playerColors[index % playerColors.length].border,
+      },
+      {
+        label: "Team Average",
+        data: commonAttributes.map(attr => standardizedAverage[attr]),
+        backgroundColor: "rgba(128, 128, 128, 0.2)",
+        borderColor: "rgba(128, 128, 128, 1)",
+        borderWidth: 2,
+        pointBackgroundColor: "rgba(128, 128, 128, 1)",
+        pointStyle: 'circle',
+      }
+    ],
+  };
+};
+
+  // Function to prepare data for attribute comparison bar charts
+  const prepareAttributeBarData = (players, attribute) => {
+    if (!players || players.length === 0) return null;
+    
+    return {
+      labels: players.map(player => player.player),
+      datasets: [
+        {
+          label: attribute.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim(),
+          data: players.map(player => 
+            player.stats && player.stats[attribute] ? player.stats[attribute] : 0
+          ),
+          backgroundColor: players.map((_, index) => playerColors[index % playerColors.length].bg),
+          borderColor: players.map((_, index) => playerColors[index % playerColors.length].border),
+          borderWidth: 1,
+        }
+      ]
+    };
+  };
+
+  // Helper function to prepare comparison bar chart
+  const prepareComparisonData = (players) => {
+    if (!players || players.length < 2) return null;
+    
+    const topPlayers = players.slice(0, 5);
+    const statsToCompare = Object.keys(topPlayers[0].stats || {}).filter(
+      key => typeof topPlayers[0].stats[key] === "number"
+    );
+    
+    if (statsToCompare.length === 0) return null;
+    
+    // Select top 5 stats with highest variance
+    const statVariances = statsToCompare.map(stat => {
+      const values = topPlayers.map(p => p.stats[stat] || 0);
+      const max = Math.max(...values);
+      const min = Math.min(...values);
+      return { stat, range: max - min };
+    }).sort((a, b) => b.range - a.range).slice(0, 5);
+    
+    const comparisonStats = statVariances.map(item => item.stat);
+    
+    return {
+      labels: comparisonStats.map(stat => stat.replace(/_/g, " ")),
+      datasets: topPlayers.map((player, idx) => ({
+        label: player.player,
+        data: comparisonStats.map(stat => player.stats[stat] || 0),
+        backgroundColor: playerColors[idx % playerColors.length].bg,
+        borderColor: playerColors[idx % playerColors.length].border,
+        borderWidth: 1,
+      })),
+    };
+  };
 
   const handleRoleChange = (event) => {
     setSelectedRole(event.target.value);
@@ -102,6 +325,10 @@ const App = () => {
         ? prev.filter((item) => item !== attribute)
         : [...prev, attribute]
     );
+  };
+
+  const handlePlayerSelect = (player) => {
+    setSelectedPlayer(player === selectedPlayer ? null : player);
   };
 
   const handleSubmit = async () => {
@@ -132,7 +359,21 @@ const App = () => {
       }
 
       const data = await response.json();
+      console.log(data)
+      // Process and set the analysis results
+      // In the handleSubmit function
+      if (data && data.similar_players && data.average_profile) {
+        // Limit to top 5 players
+        data.similar_players = data.similar_players.slice(0, 5);
+        
+        // Standardize both players and average profile together
+        const standardizedData = standardizeData(data.similar_players, data.average_profile);
+        data.similar_players = standardizedData.players;
+        data.standardized_average = standardizedData.average;
+      }
+      
       setAnalysisResult(data);
+      setSelectedPlayer(null);
     } catch (err) {
       setError("Failed to fetch analysis results. Please try again.");
       console.error("Error:", err);
@@ -306,7 +547,8 @@ const App = () => {
             </h2>
 
             {analysisResult ? (
-              <div className="space-y-6">
+              <div className="space-y-8">
+                {/* Selected Criteria */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="font-medium text-gray-800 mb-2">
                     Selected Criteria:
@@ -332,6 +574,7 @@ const App = () => {
                   </div>
                 </div>
 
+                {/* Team Players */}
                 <div>
                   <h3 className="font-medium text-gray-800 mb-2">
                     Team Players:
@@ -348,41 +591,358 @@ const App = () => {
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="text-lg font-medium text-gray-800 mb-4">
-                    Similar Players Analysis
-                  </h3>
-                  <div className="space-y-4">
-                  {analysisResult.similar_players?.map((player, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-bold text-gray-800">
-                              {player.player}
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              {player.position} • {player.team}
-                            </p>
-                            <p className="text-sm text-gray-500 mt-1">
-                              Similarity Distance: {player.distance.toFixed(2)}
-                            </p>
+                {/* Top 5 Suggested Players */}
+                {analysisResult.similar_players && analysisResult.similar_players.length > 0 && (
+                  <div className="space-y-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      Top 5 Suggested Players
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {analysisResult.similar_players.map((player, index) => (
+                        <div 
+                          key={index}
+                          className={`p-4 rounded-lg cursor-pointer transition duration-200 ${
+                            selectedPlayer === player ? 'bg-blue-50 border-2 border-blue-300' : 'bg-gray-50 hover:bg-gray-100'
+                          }`}
+                          onClick={() => handlePlayerSelect(player)}
+                        >
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center" 
+                                style={{ backgroundColor: playerColors[index % playerColors.length].bg }}>
+                              <span className="font-bold text-lg">{index + 1}</span>
+                            </div>
+                            <div className="ml-4">
+                              <h4 className="font-semibold text-lg">{player.player}</h4>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                <span className="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded">
+                                  {player.team || 'Unknown Team'}
+                                </span>
+                                <span className="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded">
+                                  {player.position || analysisResult.position}
+                                </span>
+                                <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">
+                                  Match: {player.similarity ? (player.similarity * 100).toFixed(1) + '%' : 'N/A'}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-
-                        <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
-                          {Object.entries(player.stats || {}).map(([statName, statValue]) => (
-                            <div key={statName} className="text-sm">
-                              <span className="text-gray-500 capitalize">{statName.replace(/_/g, ' ')}:</span>
-                              <span className="ml-2 font-medium text-gray-800">
-                                {typeof statValue === 'number' ? statValue.toFixed(2) : statValue || "N/A"}
-                              </span>
+                      ))}
+                    </div>
+                    
+                    {/* Radar Charts for Each Player */}
+                    <div className="mt-8">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                        Player Performance Analysis
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {analysisResult.similar_players.map((player, index) => (
+                          <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                            <h4 className="font-medium text-gray-800 mb-3 text-center">
+                              {player.player} vs. Team Average
+                            </h4>
+                            <div className="h-64">
+                              <Radar
+                                data={prepareRadarData(player, analysisResult.standardized_average, index)}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  scales: {
+                                    r: {
+                                      angleLines: {
+                                        display: true,
+                                      },
+                                      suggestedMin: 0,
+                                      suggestedMax: 1,
+                                      ticks: {
+                                        stepSize: 0.2
+                                      }
+                                    },
+                                  },
+                                  plugins: {
+                                    legend: {
+                                      position: 'top',
+                                    },
+                                    tooltip: {
+                                      callbacks: {
+                                        label: function(context) {
+                                          return `${context.dataset.label}: ${(context.raw * 100).toFixed(1)}%`;
+                                        }
+                                      }
+                                    }
+                                  }
+                                }}
+                              />
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                    
+                    {/* Attribute-based Bar Charts */}
+                    <div className="mt-8">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                        Player Attribute Comparison
+                      </h3>
+                      
+                      {/* Comparison Bar Chart */}
+                      <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                        <h4 className="font-medium text-gray-800 mb-3">
+                          Key Attributes Comparison
+                        </h4>
+                        <div className="h-80">
+                          <Bar
+                            data={prepareComparisonData(analysisResult.similar_players)}
+                            options={{
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              scales: {
+                                y: {
+                                  beginAtZero: true,
+                                },
+                              },
+                              plugins: {
+                                legend: {
+                                  position: 'top',
+                                },
+                              }
+                            }}
+                          />
+                        </div>
+                        </div>
+                      
+                      {/* Individual attribute comparisons */}
+                      {analysisResult.similar_players.length > 0 && analysisResult.similar_players[0].stats && (
+                        <div className="space-y-6">
+                          <h4 className="font-medium text-gray-800 mb-3">
+                            Individual Attribute Comparisons
+                          </h4>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {Object.keys(analysisResult.similar_players[0].stats)
+                              .filter(attr => typeof analysisResult.similar_players[0].stats[attr] === "number")
+                              .slice(0, 6) // Show top 6 attributes
+                              .map((attribute, attrIndex) => (
+                                <div key={attrIndex} className="bg-gray-50 p-4 rounded-lg">
+                                  <h5 className="font-medium text-gray-800 mb-2 text-center">
+                                    {attribute.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim()}
+                                  </h5>
+                                  <div className="h-48">
+                                    <Bar
+                                      data={prepareAttributeBarData(analysisResult.similar_players, attribute)}
+                                      options={{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        indexAxis: 'y',
+                                        scales: {
+                                          x: {
+                                            beginAtZero: true,
+                                          },
+                                        },
+                                        plugins: {
+                                          legend: {
+                                            display: false,
+                                          },
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Detailed Player Profiles */}
+                    <div className="mt-10">
+                      <h3 className="text-xl font-semibold text-gray-800 mb-6">
+                        Complete Player Profiles
+                      </h3>
+                      
+                      {analysisResult.similar_players.map((player, index) => (
+                        <div key={index} className="mb-6">
+                          <div 
+                            className="p-5 rounded-lg mb-4"
+                            style={{ 
+                              backgroundColor: playerColors[index % playerColors.length].bg,
+                              borderLeft: `6px solid ${playerColors[index % playerColors.length].border}`
+                            }}  
+                          >
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                              <div>
+                                <h4 className="text-xl font-bold">{player.player}</h4>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  <span className="bg-white bg-opacity-70 text-gray-800 text-sm px-3 py-1 rounded-full">
+                                    Team: {player.team || "Unknown"}
+                                  </span>
+                                  <span className="bg-white bg-opacity-70 text-gray-800 text-sm px-3 py-1 rounded-full">
+                                    Position: {player.position || analysisResult.position}
+                                  </span>
+                                  <span className="bg-white bg-opacity-70 text-gray-800 text-sm px-3 py-1 rounded-full">
+                                    Age: {player.age || "N/A"}
+                                  </span>
+                                  {player.nationality && (
+                                    <span className="bg-white bg-opacity-70 text-gray-800 text-sm px-3 py-1 rounded-full">
+                                      Nationality: {player.nationality}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="mt-3 md:mt-0">
+                                <span className="inline-block bg-white text-gray-800 text-lg font-bold px-4 py-2 rounded-lg">
+                                  Match: {player.similarity ? (player.similarity * 100).toFixed(1) + '%' : 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Player Stats Table */}
+                          <div className="bg-white rounded-lg shadow overflow-hidden">
+                            <div className="p-4 border-b border-gray-200">
+                              <h5 className="font-medium text-gray-800">Performance Statistics</h5>
+                            </div>
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Attribute
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Value
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Team Avg
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Comparison
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {player.stats && Object.entries(player.stats)
+                                    .filter(([, value]) => typeof value === "number")
+                                    .map(([key, value], statIdx) => {
+                                      const teamAvg = analysisResult.average_profile?.[key] || 0;
+                                      const difference = value - teamAvg;
+                                      const percentDiff = teamAvg !== 0 ? (difference / teamAvg) * 100 : 0;
+                                      
+                                      return (
+                                        <tr key={statIdx} className={statIdx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                                          <td className="px-4 py-2 text-sm text-gray-900">
+                                            {key.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim()}
+                                          </td>
+                                          <td className="px-4 py-2 text-sm text-gray-900 font-medium">
+                                            {typeof value === 'number' ? value.toFixed(2) : value}
+                                          </td>
+                                          <td className="px-4 py-2 text-sm text-gray-500">
+                                            {teamAvg.toFixed(2)}
+                                          </td>
+                                          <td className="px-4 py-2 text-sm">
+                                            <div className="flex items-center">
+                                              {difference > 0 ? (
+                                                <span className="text-green-600 flex items-center">
+                                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                                  </svg>
+                                                  +{Math.abs(percentDiff).toFixed(1)}%
+                                                </span>
+                                              ) : difference < 0 ? (
+                                                <span className="text-red-600 flex items-center">
+                                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                  </svg>
+                                                  -{Math.abs(percentDiff).toFixed(1)}%
+                                                </span>
+                                              ) : (
+                                                <span className="text-gray-500">
+                                                  0%
+                                                </span>
+                                              )}
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                          
+                          {/* Strengths and Weaknesses */}
+                          {player.stats && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                              <div className="bg-white rounded-lg shadow p-4">
+                                <h5 className="font-medium text-green-600 mb-3 flex items-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                  </svg>
+                                  Key Strengths
+                                </h5>
+                                <ul className="space-y-2">
+                                  {Object.entries(player.stats)
+                                    .filter(([, value]) => typeof value === "number")
+                                    .map(([key, value]) => {
+                                      const teamAvg = analysisResult.average_profile?.[key] || 0;
+                                      const percentDiff = teamAvg !== 0 ? ((value - teamAvg) / teamAvg) * 100 : 0;
+                                      return { key, percentDiff };
+                                    })
+                                    .sort((a, b) => b.percentDiff - a.percentDiff)
+                                    .slice(0, 5)
+                                    .map((item, i) => (
+                                      <li key={i} className="flex items-center text-sm">
+                                        <span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+                                        <span className="text-gray-800">
+                                          {item.key.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim()}
+                                        </span>
+                                        <span className="ml-auto text-green-600 font-medium">
+                                          +{Math.abs(item.percentDiff).toFixed(1)}%
+                                        </span>
+                                      </li>
+                                    ))}
+                                </ul>
+                              </div>
+                              
+                              <div className="bg-white rounded-lg shadow p-4">
+                                <h5 className="font-medium text-red-600 mb-3 flex items-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                  </svg>
+                                  Development Areas
+                                </h5>
+                                <ul className="space-y-2">
+                                  {Object.entries(player.stats)
+                                    .filter(([, value]) => typeof value === "number")
+                                    .map(([key, value]) => {
+                                      const teamAvg = analysisResult.average_profile?.[key] || 0;
+                                      const percentDiff = teamAvg !== 0 ? ((value - teamAvg) / teamAvg) * 100 : 0;
+                                      return { key, percentDiff };
+                                    })
+                                    .sort((a, b) => a.percentDiff - b.percentDiff)
+                                    .slice(0, 5)
+                                    .map((item, i) => (
+                                      <li key={i} className="flex items-center text-sm">
+                                        <span className="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+                                        <span className="text-gray-800">
+                                          {item.key.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim()}
+                                        </span>
+                                        <span className="ml-auto text-red-600 font-medium">
+                                          -{Math.abs(item.percentDiff).toFixed(1)}%
+                                        </span>
+                                      </li>
+                                    ))}
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
