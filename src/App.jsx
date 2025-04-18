@@ -949,21 +949,16 @@ const App = () => {
                                     }
                                     return { key, fulfillmentPercentage };
                                   })
+                                  .filter(item => item.fulfillmentPercentage >= 100)
                                   .sort((a, b) => b.fulfillmentPercentage - a.fulfillmentPercentage)
                                   .slice(0, 5)
                                   .map((item, i) => (
                                     <li key={i} className="flex items-center text-sm">
-                                      <span className={`w-2 h-2 rounded-full ${
-                                        item.fulfillmentPercentage >= 100 ? 'bg-green-500' : 
-                                        'bg-orange-500'
-                                      } mr-2`}></span>
+                                      <span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
                                       <span className="text-gray-800">
                                         {item.key.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim()}
                                       </span>
-                                      <span className={`ml-auto font-medium ${
-                                        item.fulfillmentPercentage >= 100 ? 'text-green-600' : 
-                                        'text-orange-600'
-                                      }`}>
+                                      <span className="ml-auto text-green-600 font-medium">
                                         {item.fulfillmentPercentage.toFixed(1)}%
                                       </span>
                                     </li>
@@ -985,12 +980,13 @@ const App = () => {
                                     const teamAvg = analysisResult.average_profile?.[key] || 0;
                                     let fulfillmentPercentage;
                                     if (teamAvg === 0) {
-                                      fulfillmentPercentage = value > 0 ? 200 : 100;
+                                      fulfillmentPercentage = value > 0 ? value*100 : 100;
                                     } else {
                                       fulfillmentPercentage = (value / teamAvg) * 100;
                                     }
                                     return { key, fulfillmentPercentage };
                                   })
+                                  .filter(item => item.fulfillmentPercentage < 100)
                                   .sort((a, b) => a.fulfillmentPercentage - b.fulfillmentPercentage)
                                   .slice(0, 5)
                                   .map((item, i) => (
