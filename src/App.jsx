@@ -869,7 +869,7 @@ const App = () => {
                                                 fulfillmentPercentage = (value / teamAvg) * 100;
                                               }
 
-                                              if (fulfillmentPercentage > 100) {
+                                              if (fulfillmentPercentage >= 100) {
                                                 return (
                                                   <span className="text-green-600 flex items-center">
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -878,19 +878,13 @@ const App = () => {
                                                     {fulfillmentPercentage.toFixed(1)}%
                                                   </span>
                                                 );
-                                              } else if (fulfillmentPercentage < 100) {
+                                              } else {
                                                 return (
                                                   <span className="text-red-600 flex items-center">
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                                     </svg>
                                                     {fulfillmentPercentage.toFixed(1)}%
-                                                  </span>
-                                                );
-                                              } else {
-                                                return (
-                                                  <span className="text-gray-500">
-                                                    100%
                                                   </span>
                                                 );
                                               }
@@ -933,17 +927,15 @@ const App = () => {
                                   .map((item, i) => (
                                     <li key={i} className="flex items-center text-sm">
                                       <span className={`w-2 h-2 rounded-full ${
-                                        item.fulfillmentPercentage > 100 ? 'bg-green-500' : 
-                                        item.fulfillmentPercentage < 100 ? 'bg-orange-500' : 
-                                        'bg-gray-400'
+                                        item.fulfillmentPercentage >= 100 ? 'bg-green-500' : 
+                                        'bg-orange-500'
                                       } mr-2`}></span>
                                       <span className="text-gray-800">
                                         {item.key.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim()}
                                       </span>
                                       <span className={`ml-auto font-medium ${
-                                        item.fulfillmentPercentage > 100 ? 'text-green-600' : 
-                                        item.fulfillmentPercentage < 100 ? 'text-orange-600' : 
-                                        'text-gray-500'
+                                        item.fulfillmentPercentage >= 100 ? 'text-green-600' : 
+                                        'text-orange-600'
                                       }`}>
                                         {item.fulfillmentPercentage.toFixed(1)}%
                                       </span>
