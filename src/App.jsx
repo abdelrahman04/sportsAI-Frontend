@@ -705,30 +705,32 @@ const App = () => {
                     </h3>
                     
                     {/* Comparison Bar Chart */}
-                    <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                      <h4 className="font-medium text-gray-800 mb-3">
-                        Key Attributes Comparison
-                      </h4>
-                      <div className="h-80">
-                        <Bar
-                          data={prepareComparisonData(analysisResult.similar_players)}
-                          options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                              y: {
-                                beginAtZero: true,
+                    {selectedAttributes.length > 0 && prepareComparisonData(analysisResult.similar_players) && (
+                      <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                        <h4 className="font-medium text-gray-800 mb-3">
+                          Key Attributes Comparison
+                        </h4>
+                        <div className="h-80">
+                          <Bar
+                            data={prepareComparisonData(analysisResult.similar_players)}
+                            options={{
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              scales: {
+                                y: {
+                                  beginAtZero: true,
+                                },
                               },
-                            },
-                            plugins: {
-                              legend: {
-                                position: 'top',
-                              },
-                            }
-                          }}
-                        />
+                              plugins: {
+                                legend: {
+                                  position: 'top',
+                                },
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
-                      </div>
+                    )}
                     
                     {/* Individual attribute comparisons */}
                     {analysisResult.similar_players.length > 0 && analysisResult.similar_players[0].stats && (
@@ -834,7 +836,7 @@ const App = () => {
                                     Team Avg
                                   </th>
                                   <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Comparison
+                                    Fulfilment
                                   </th>
                                 </tr>
                               </thead>
@@ -843,8 +845,8 @@ const App = () => {
                                   .filter(([, value]) => typeof value === "number")
                                   .map(([key, value], statIdx) => {
                                     const teamAvg = analysisResult.average_profile?.[key] || 0;
-                                    const difference = value - teamAvg;
-                                    const percentDiff = teamAvg !== 0 ? (difference / teamAvg) * 100 : 0;
+                                    //const difference = value - teamAvg;
+                                    //const percentDiff = teamAvg !== 0 ? (difference / teamAvg) * 100 : 0;
                                     
                                     return (
                                       <tr key={statIdx} className={statIdx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
@@ -859,25 +861,40 @@ const App = () => {
                                         </td>
                                         <td className="px-4 py-2 text-sm">
                                           <div className="flex items-center">
-                                            {difference > 0 ? (
-                                              <span className="text-green-600 flex items-center">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                                                </svg>
-                                                +{Math.abs(percentDiff).toFixed(1)}%
-                                              </span>
-                                            ) : difference < 0 ? (
-                                              <span className="text-red-600 flex items-center">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                                -{Math.abs(percentDiff).toFixed(1)}%
-                                              </span>
-                                            ) : (
-                                              <span className="text-gray-500">
-                                                0%
-                                              </span>
-                                            )}
+                                            {(() => {
+                                              let fulfillmentPercentage;
+                                              if (teamAvg === 0) {
+                                                fulfillmentPercentage = value > 0 ? value*100 : 100;
+                                              } else {
+                                                fulfillmentPercentage = (value / teamAvg) * 100;
+                                              }
+
+                                              if (fulfillmentPercentage > 100) {
+                                                return (
+                                                  <span className="text-green-600 flex items-center">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                                    </svg>
+                                                    {fulfillmentPercentage.toFixed(1)}%
+                                                  </span>
+                                                );
+                                              } else if (fulfillmentPercentage < 100) {
+                                                return (
+                                                  <span className="text-red-600 flex items-center">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                    {fulfillmentPercentage.toFixed(1)}%
+                                                  </span>
+                                                );
+                                              } else {
+                                                return (
+                                                  <span className="text-gray-500">
+                                                    100%
+                                                  </span>
+                                                );
+                                              }
+                                            })()}
                                           </div>
                                         </td>
                                       </tr>
@@ -903,20 +920,32 @@ const App = () => {
                                   .filter(([, value]) => typeof value === "number")
                                   .map(([key, value]) => {
                                     const teamAvg = analysisResult.average_profile?.[key] || 0;
-                                    const percentDiff = teamAvg !== 0 ? ((value - teamAvg) / teamAvg) * 100 : 0;
-                                    return { key, percentDiff };
+                                    let fulfillmentPercentage;
+                                    if (teamAvg === 0) {
+                                      fulfillmentPercentage = value > 0 ? value*100 : 100;
+                                    } else {
+                                      fulfillmentPercentage = (value / teamAvg) * 100;
+                                    }
+                                    return { key, fulfillmentPercentage };
                                   })
-                                  .sort((a, b) => b.percentDiff - a.percentDiff)
+                                  .sort((a, b) => b.fulfillmentPercentage - a.fulfillmentPercentage)
                                   .slice(0, 5)
                                   .map((item, i) => (
                                     <li key={i} className="flex items-center text-sm">
-                                      <span className={`w-2 h-2 rounded-full ${item.percentDiff >= 0 ? 'bg-green-500' : 'bg-orange-500'} mr-2`}></span>
+                                      <span className={`w-2 h-2 rounded-full ${
+                                        item.fulfillmentPercentage > 100 ? 'bg-green-500' : 
+                                        item.fulfillmentPercentage < 100 ? 'bg-orange-500' : 
+                                        'bg-gray-400'
+                                      } mr-2`}></span>
                                       <span className="text-gray-800">
                                         {item.key.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim()}
                                       </span>
-                                      <span className={`ml-auto font-medium ${item.percentDiff >= 0 ? 'text-green-600' : 'text-orange-600'}`}>
-                                        {item.percentDiff >= 0 ? '+' : '-'}
-                                        {Math.abs(item.percentDiff).toFixed(1)}%
+                                      <span className={`ml-auto font-medium ${
+                                        item.fulfillmentPercentage > 100 ? 'text-green-600' : 
+                                        item.fulfillmentPercentage < 100 ? 'text-orange-600' : 
+                                        'text-gray-500'
+                                      }`}>
+                                        {item.fulfillmentPercentage.toFixed(1)}%
                                       </span>
                                     </li>
                                   ))}
@@ -935,10 +964,15 @@ const App = () => {
                                   .filter(([, value]) => typeof value === "number")
                                   .map(([key, value]) => {
                                     const teamAvg = analysisResult.average_profile?.[key] || 0;
-                                    const percentDiff = teamAvg !== 0 ? ((value - teamAvg) / teamAvg) * 100 : 0;
-                                    return { key, percentDiff };
+                                    let fulfillmentPercentage;
+                                    if (teamAvg === 0) {
+                                      fulfillmentPercentage = value > 0 ? 200 : 100;
+                                    } else {
+                                      fulfillmentPercentage = (value / teamAvg) * 100;
+                                    }
+                                    return { key, fulfillmentPercentage };
                                   })
-                                  .sort((a, b) => a.percentDiff - b.percentDiff)
+                                  .sort((a, b) => a.fulfillmentPercentage - b.fulfillmentPercentage)
                                   .slice(0, 5)
                                   .map((item, i) => (
                                     <li key={i} className="flex items-center text-sm">
@@ -947,7 +981,7 @@ const App = () => {
                                         {item.key.replace(/_/g, " ").replace(/([A-Z])/g, ' $1').trim()}
                                       </span>
                                       <span className="ml-auto text-red-600 font-medium">
-                                        -{Math.abs(item.percentDiff).toFixed(1)}%
+                                        {item.fulfillmentPercentage.toFixed(1)}%
                                       </span>
                                     </li>
                                   ))}
