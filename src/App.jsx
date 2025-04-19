@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Bar,
   Radar,
@@ -126,6 +126,46 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [searchMode, setSearchMode] = useState(false);
+  const [playerSearch, setPlayerSearch] = useState("");
+  const [playerSuggestions, setPlayerSuggestions] = useState([]);
+  const [allPlayers, setAllPlayers] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Fetch all players on component mount
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/players");
+        if (!response.ok) {
+          throw new Error("Failed to fetch players");
+        }
+        const data = await response.json();
+        setAllPlayers(data.players);
+      } catch (err) {
+        console.error("Error fetching players:", err);
+      }
+    };
+    fetchPlayers();
+  }, []);
+
+  // Update suggestions when player search changes
+  useEffect(() => {
+    if (playerSearch.trim() === "") {
+      setPlayerSuggestions([]);
+      return;
+    }
+
+    const searchTerm = playerSearch.toLowerCase();
+    const suggestions = allPlayers
+      .filter(player => 
+        player.name.toLowerCase().includes(searchTerm) ||
+        player.team.toLowerCase().includes(searchTerm)
+      )
+      .slice(0, 5);
+
+    setPlayerSuggestions(suggestions);
+  }, [playerSearch, allPlayers]);
 
   // Function to standardize the data for radar charts
   const standardizeData = (data, averageProfile) => {
@@ -351,28 +391,48 @@ const App = () => {
     setSelectedPlayer(player === selectedPlayer ? null : player);
   };
 
+  const handleSuggestionClick = (player) => {
+    setPlayerSearch(player.name);
+    setSelectedRole(player.position);
+    setPlayerSuggestions([]);
+    setShowSuggestions(false);
+  };
+
   const handleSubmit = async () => {
-    if (!selectedRole || !selectedTeam || !selectedLeague) {
-      setError("Please select a role, league, team");
-      return;
+    if (searchMode) {
+      if (!playerSearch || !selectedTeam || !selectedLeague) {
+        setError("Please select a player, league, and team");
+        return;
+      }
+    } else {
+      if (!selectedRole || !selectedTeam || !selectedLeague) {
+        setError("Please select a role, league, and team");
+        return;
+      }
     }
 
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch("http://localhost:8000/analyze-players", {
+      const endpoint = searchMode ? "/analyze-player-to-player" : "/analyze-players";
+      const body = searchMode ? {
+        player_name: playerSearch,
+        team: selectedTeam,
+      } : {
+        position: selectedRole,
+        team: selectedTeam,
+        league: selectedLeague,
+        specific_role_cols: selectedAttributes.map(attr => attributeMap[attr] || attr),
+        specific_role_weight: attributeWeight
+      };
+
+      const response = await fetch(`http://localhost:8000${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          position: selectedRole,
-          team: selectedTeam,
-          league: selectedLeague,
-          specific_role_cols: selectedAttributes.map(attr => attributeMap[attr] || attr),
-          specific_role_weight: attributeWeight
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -381,14 +441,8 @@ const App = () => {
 
       const data = await response.json();
       console.log(data)
-      // Process and set the analysis results
-      // In the handleSubmit function
       if (data && data.similar_players && data.average_profile) {
-        console.log("hna2")
-        // Limit to top 5 players
         data.similar_players = data.similar_players.slice(0, 5);
-        
-        // Standardize both players and average profile together
         const standardizedData = standardizeData(data.similar_players, data.average_profile);
         data.similar_players = standardizedData.players;
         data.standardized_average = standardizedData.average;
@@ -418,29 +472,95 @@ const App = () => {
 
         {/* Selection Panel - Now Horizontal */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-6 pb-2 border-b border-gray-200">
-            Player Selection Criteria
-          </h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-gray-800">
+              Player Selection Criteria
+            </h2>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">Search Mode:</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={searchMode}
+                  onChange={() => {
+                    setSearchMode(!searchMode);
+                    setPlayerSearch("");
+                    setPlayerSuggestions([]);
+                  }}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Role Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Player Role
-              </label>
-              <select
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                onChange={handleRoleChange}
-                value={selectedRole}
-              >
-                <option value="">Select a role</option>
-                {Object.keys(roles).map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Role Selection - Only show in attribute mode */}
+            {!searchMode && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Player Role
+                </label>
+                <select
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  onChange={handleRoleChange}
+                  value={selectedRole}
+                >
+                  <option value="">Select a role</option>
+                  {Object.keys(roles).map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Player Search - Only show in search mode */}
+            {searchMode && (
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Search Player
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  value={playerSearch}
+                  onChange={(e) => {
+                    setPlayerSearch(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => {
+                    // Add a small delay to allow clicking on suggestions
+                    setTimeout(() => setShowSuggestions(false), 200);
+                  }}
+                  placeholder="Type player name..."
+                />
+                {showSuggestions && playerSuggestions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+                    {playerSuggestions.map((player, index) => (
+                      <div
+                        key={index}
+                        className="p-2 hover:bg-gray-100 cursor-pointer"
+                        onMouseDown={(e) => {
+                          e.preventDefault(); // Prevent the blur event from firing
+                          setPlayerSearch(player.name);
+                          setSelectedRole(player.position);
+                          setPlayerSuggestions([]);
+                          setShowSuggestions(false);
+                        }}
+                      >
+                        <div className="font-medium">{player.name}</div>
+                        <div className="text-sm text-gray-600">
+                          {player.team} • {player.position}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* League Selection */}
             <div>
@@ -523,8 +643,8 @@ const App = () => {
             </div>
           </div>
 
-          {/* Attributes Selection - Below the main controls */}
-          {selectedRole && (
+          {/* Attributes Selection - Only show in attribute mode */}
+          {!searchMode && selectedRole && (
             <div className="mt-6">
               <h3 className="text-sm font-medium text-gray-700 mb-3">
                 Select Attributes
