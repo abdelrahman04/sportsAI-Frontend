@@ -278,7 +278,7 @@ const App = () => {
     };
   };
 
-  const prepareRadarData = (player, standardizedAverage, index) => {
+  const prepareRadarData = (player, standardizedAverage, index, searchMode, searchedPlayerName) => {
     if (!player || !player.standardizedStats || !standardizedAverage) return null;
 
     // Get common attributes between player and average profile
@@ -304,7 +304,7 @@ const App = () => {
           pointBackgroundColor: playerColors[index % playerColors.length].border,
         },
         {
-          label: "Team Average",
+          label: searchMode ? searchedPlayerName : "Team Average",
           data: commonAttributes.map(attr => standardizedAverage[attr]),
           backgroundColor: "rgba(128, 128, 128, 0.2)",
           borderColor: "rgba(128, 128, 128, 1)",
@@ -391,13 +391,6 @@ const App = () => {
     setSelectedPlayer(player === selectedPlayer ? null : player);
   };
 
-  const handleSuggestionClick = (player) => {
-    setPlayerSearch(player.name);
-    setSelectedRole(player.position);
-    setPlayerSuggestions([]);
-    setShowSuggestions(false);
-  };
-
   const handleSubmit = async () => {
     if (searchMode) {
       if (!playerSearch || !selectedTeam || !selectedLeague) {
@@ -458,6 +451,18 @@ const App = () => {
     }
   };
 
+  const handleModeToggle = () => {
+    // Reset all relevant state
+    setSearchMode(!searchMode);
+    setPlayerSearch("");
+    setPlayerSuggestions([]);
+    setShowSuggestions(false);
+    setSelectedRole(null);
+    setSelectedAttributes([]);
+    setAnalysisResult(null);
+    setSelectedPlayer(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -483,11 +488,7 @@ const App = () => {
                   type="checkbox"
                   className="sr-only peer"
                   checked={searchMode}
-                  onChange={() => {
-                    setSearchMode(!searchMode);
-                    setPlayerSearch("");
-                    setPlayerSuggestions([]);
-                  }}
+                  onChange={handleModeToggle}
                 />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
               </label>
@@ -805,11 +806,11 @@ const App = () => {
                       {analysisResult.similar_players.map((player, index) => (
                         <div key={index} className="bg-gray-50 p-4 rounded-lg">
                           <h4 className="font-medium text-gray-800 mb-3 text-center">
-                            {player.player} vs. Team Average
+                            {player.player} vs. {searchMode ? playerSearch : "Team Average"}
                           </h4>
                           <div className="h-64">
                             <Radar
-                              data={prepareRadarData(player, analysisResult.standardized_average, index)}
+                              data={prepareRadarData(player, analysisResult.standardized_average, index, searchMode, playerSearch)}
                               options={{
                                 responsive: true,
                                 maintainAspectRatio: false,
@@ -980,7 +981,7 @@ const App = () => {
                                     Value
                                   </th>
                                   <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Team Avg
+                                    {searchMode ? playerSearch : "Team Avg"}
                                   </th>
                                   <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Fulfilment
