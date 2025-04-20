@@ -444,7 +444,7 @@ const App = () => {
       setAnalysisResult(data);
       setSelectedPlayer(null);
     } catch (err) {
-      setError("Failed to fetch analysis results. Please try again.");
+      setError(`No ${selectedRole} in ${selectedTeam}. Please choose another position!`);
       console.error("Error:", err);
     } finally {
       setLoading(false);
