@@ -763,6 +763,14 @@ const App = () => {
                     Top 5 Suggested Players
                   </h3>
                   
+                  {searchMode && (
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                      <p className="text-sm text-blue-700">
+                        Players are ranked based on their match with the team's playing style and requirements, not solely by their statistical distance to the searched player. The distance value represents how similar each player's attributes are to {playerSearch}, but the ranking prioritizes players who would be the best fit for the team.
+                      </p>
+                    </div>
+                  )}
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {analysisResult.similar_players.map((player, index) => (
                       <div 
