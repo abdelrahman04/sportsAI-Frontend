@@ -133,6 +133,7 @@ const App = () => {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [searchMode, setSearchMode] = useState(false);
   const [playerSearch, setPlayerSearch] = useState("");
+  const [submittedPlayerName, setSubmittedPlayerName] = useState("");
   const [playerSuggestions, setPlayerSuggestions] = useState([]);
   const [allPlayers, setAllPlayers] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -403,6 +404,7 @@ const App = () => {
         setError("Please select a player, league, and team");
         return;
       }
+      setSubmittedPlayerName(playerSearch);
     } else {
       if (!selectedRole || !selectedTeam || !selectedLeague) {
         setError("Please select a role, league, and team");
@@ -774,7 +776,7 @@ const App = () => {
                   {searchMode && (
                     <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
                       <p className="text-sm text-blue-700">
-                        Players are ranked based on their match with the team's playing style and requirements, not solely by their statistical distance to the searched player. The distance value represents how similar each player's attributes are to {playerSearch}, but the ranking prioritizes players who would be the best fit for the team.
+                        Players are ranked based on their match with the team's playing style and requirements, not solely by their statistical distance to the searched player. The distance value represents how similar each player's attributes are to {submittedPlayerName}, but the ranking prioritizes players who would be the best fit for the team.
                       </p>
                     </div>
                   )}
@@ -822,11 +824,11 @@ const App = () => {
                       {analysisResult.similar_players.map((player, index) => (
                         <div key={index} className="bg-gray-50 p-4 rounded-lg">
                           <h4 className="font-medium text-gray-800 mb-3 text-center">
-                            {player.player} vs. {searchMode ? playerSearch : "Team Average"}
+                            {player.player} vs. {searchMode ? submittedPlayerName : "Team Average"}
                           </h4>
                           <div className="h-64">
                             <Radar
-                              data={prepareRadarData(player, analysisResult.standardized_average, index, searchMode, playerSearch)}
+                              data={prepareRadarData(player, analysisResult.standardized_average, index, searchMode, submittedPlayerName)}
                               options={{
                                 responsive: true,
                                 maintainAspectRatio: false,
@@ -997,7 +999,7 @@ const App = () => {
                                     Value
                                   </th>
                                   <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {searchMode ? playerSearch : "Team Avg"}
+                                    {searchMode ? submittedPlayerName : "Team Avg"}
                                   </th>
                                   <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Fulfilment
