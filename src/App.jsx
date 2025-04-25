@@ -691,10 +691,10 @@ const App = () => {
               {selectedAttributes.length > 0 && (
                 <div className="mt-4 bg-gray-50 p-3 rounded-lg">
                   <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 text-center sm:text-left w-full sm:w-auto">
                       <span className="text-sm font-medium text-gray-700">Attribute Weight</span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 flex-grow">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 flex-grow w-full sm:w-auto">
                       <div className="flex items-center gap-3">
                         <input
                           type="range"
