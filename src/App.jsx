@@ -116,7 +116,10 @@ const playerColors = [
   { bg: "rgba(153, 102, 255, 0.2)", border: "rgba(153, 102, 255, 1)" }, // Purple
 ];
 
-const API_URL = import.meta.env.VITE_API_URL;
+if (!process.env.API_URL) {
+  console.error('API URL is not defined in environment variables');
+}
+const API_URL = process.env.API_URL;
 
 const App = () => {
   const [selectedRole, setSelectedRole] = useState(null);
@@ -136,6 +139,7 @@ const App = () => {
 
   // Fetch all players on component mount
   useEffect(() => {
+    console.log(API_URL)
     const fetchPlayers = async () => {
       try {
         const response = await fetch(`${API_URL}/players`);
