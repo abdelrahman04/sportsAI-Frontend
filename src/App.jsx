@@ -119,7 +119,7 @@ const playerColors = [
 if (!process.env.API_URL) {
   console.error('API URL is not defined in environment variables');
 }
-const API_URL = process.env.API_URL;
+const API_URL = process.env.API_URL || 'https://web-production-12a2.up.railway.app';
 
 const App = () => {
   const [selectedRole, setSelectedRole] = useState(null);
