@@ -681,23 +681,25 @@ const App = () => {
               
               {/* Collective Weight Slider */}
               {selectedAttributes.length > 0 && (
-                <div className="mt-4 flex items-center gap-4 bg-gray-50 p-3 rounded-lg max-w-md">
-                  <div className="flex-shrink-0">
-                    <span className="text-sm font-medium text-gray-700">Attribute Weight</span>
-                  </div>
-                  <div className="flex-grow flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      value={attributeWeight}
-                      onChange={(e) => setAttributeWeight(parseInt(e.target.value))}
-                      className="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
-                    <span className="text-sm font-medium text-gray-700 min-w-[2rem] text-center">{attributeWeight}</span>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <span className="text-xs text-gray-500">Higher = More Focus</span>
+                <div className="mt-4 bg-gray-50 p-3 rounded-lg">
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="flex-shrink-0">
+                      <span className="text-sm font-medium text-gray-700">Attribute Weight</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 flex-grow">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={attributeWeight}
+                          onChange={(e) => setAttributeWeight(parseInt(e.target.value))}
+                          className="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <span className="text-sm font-medium text-gray-700 min-w-[2rem] text-center">{attributeWeight}</span>
+                      </div>
+                      <span className="text-xs text-gray-500">Higher = More Focus</span>
+                    </div>
                   </div>
                 </div>
               )}
