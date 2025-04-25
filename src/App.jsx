@@ -841,38 +841,40 @@ const App = () => {
                           <h4 className="font-medium text-gray-800 mb-3 text-center">
                             {player.player} vs. {searchMode ? submittedPlayerName : "Team Average"}
                           </h4>
-                          <div className="h-64">
-                            <Radar
-                              data={prepareRadarData(player, analysisResult.standardized_average, index, searchMode, submittedPlayerName)}
-                              options={{
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                  r: {
-                                    angleLines: {
-                                      display: true,
+                          <div className="overflow-x-auto">
+                            <div className="h-64 min-w-[400px]">
+                              <Radar
+                                data={prepareRadarData(player, analysisResult.standardized_average, index, searchMode, submittedPlayerName)}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  scales: {
+                                    r: {
+                                      angleLines: {
+                                        display: true,
+                                      },
+                                      suggestedMin: 0,
+                                      suggestedMax: 1,
+                                      ticks: {
+                                        stepSize: 0.2
+                                      }
                                     },
-                                    suggestedMin: 0,
-                                    suggestedMax: 1,
-                                    ticks: {
-                                      stepSize: 0.2
-                                    }
                                   },
-                                },
-                                plugins: {
-                                  legend: {
-                                    position: 'top',
-                                  },
-                                  tooltip: {
-                                    callbacks: {
-                                      label: function(context) {
-                                        return `${context.dataset.label}: ${(context.raw * 100).toFixed(1)}%`;
+                                  plugins: {
+                                    legend: {
+                                      position: 'top',
+                                    },
+                                    tooltip: {
+                                      callbacks: {
+                                        label: function(context) {
+                                          return `${context.dataset.label}: ${(context.raw * 100).toFixed(1)}%`;
+                                        }
                                       }
                                     }
                                   }
-                                }
-                              }}
-                            />
+                                }}
+                              />
+                            </div>
                           </div>
                         </div>
                       ))}
