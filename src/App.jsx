@@ -124,9 +124,11 @@ const API_URL = process.env.API_URL || 'https://web-production-12a2.up.railway.a
 const App = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [selectedAttributes, setSelectedAttributes] = useState([]);
+  const [submittedAttributes, setSubmittedAttributes] = useState([]);
   const [attributeWeight, setAttributeWeight] = useState(2);
-  const [selectedLeague, setSelectedLeague] = useState(null);
+  const [selectedLeague, setSelectedLeague] = useState("");
   const [selectedTeam, setSelectedTeam] = useState(null);
+  const [submittedLeague, setSubmittedLeague] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -450,6 +452,11 @@ const App = () => {
       }
       
       setAnalysisResult(data);
+      // Update submitted values only after successful analysis
+      setSubmittedLeague(selectedLeague);
+      if (!searchMode) {
+        setSubmittedAttributes(selectedAttributes);
+      }
       setSelectedPlayer(null);
     } catch (err) {
       setError(`No ${selectedRole} in ${selectedTeam}. Please choose another position!`);
@@ -464,6 +471,7 @@ const App = () => {
     setSelectedTeam(null);
     setSelectedRole(null);
     setSelectedAttributes([]);
+    setSubmittedAttributes([]);
     setAnalysisResult(null);
     setSelectedPlayer(null);
     setPlayerSearch("");
@@ -474,6 +482,7 @@ const App = () => {
     
     // Reset league last and toggle search mode
     setSelectedLeague("");
+    setSubmittedLeague("");
     setSearchMode(prev => !prev);
   };
 
@@ -739,12 +748,12 @@ const App = () => {
                     {analysisResult.position}
                   </span>
                   <span className="bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded">
-                    {selectedLeague}
+                    {submittedLeague}
                   </span>
                   <span className="bg-purple-100 text-purple-800 text-xs px-2.5 py-0.5 rounded">
                     {analysisResult.team}
                   </span>
-                  {selectedAttributes.map((attr) => (
+                  {submittedAttributes.map((attr) => (
                     <span
                       key={attr}
                       className="bg-yellow-100 text-yellow-800 text-xs px-2.5 py-0.5 rounded"
