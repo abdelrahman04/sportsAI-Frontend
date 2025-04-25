@@ -116,6 +116,8 @@ const playerColors = [
   { bg: "rgba(153, 102, 255, 0.2)", border: "rgba(153, 102, 255, 1)" }, // Purple
 ];
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const App = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [selectedAttributes, setSelectedAttributes] = useState([]);
@@ -136,7 +138,7 @@ const App = () => {
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
-        const response = await fetch("http://localhost:8000/players");
+        const response = await fetch(`${API_URL}/players`);
         if (!response.ok) {
           throw new Error("Failed to fetch players");
         }
@@ -420,7 +422,7 @@ const App = () => {
         specific_role_weight: attributeWeight
       };
 
-      const response = await fetch(`http://localhost:8000${endpoint}`, {
+      const response = await fetch(`${API_URL}${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
