@@ -460,15 +460,21 @@ const App = () => {
   };
 
   const handleModeToggle = () => {
-    // Reset all relevant state
-    setSearchMode(!searchMode);
-    setPlayerSearch("");
-    setPlayerSuggestions([]);
-    setShowSuggestions(false);
+    // First reset all the dependent states
+    setSelectedTeam(null);
     setSelectedRole(null);
     setSelectedAttributes([]);
     setAnalysisResult(null);
     setSelectedPlayer(null);
+    setPlayerSearch("");
+    setSubmittedPlayerName("");
+    setPlayerSuggestions([]);
+    setShowSuggestions(false);
+    setError(null);
+    
+    // Reset league last and toggle search mode
+    setSelectedLeague("");
+    setSearchMode(prev => !prev);
   };
 
   return (
